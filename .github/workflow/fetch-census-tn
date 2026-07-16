@@ -1,0 +1,41 @@
+name: Fetch Census 2011 - Tamil Nadu
+
+# Census 2011 is static data — it never changes — so this runs on manual
+# trigger (workflow_dispatch) rather than a cron schedule like the WHO /
+# World Bank / climate jobs. Run it once; re-running later is still safe
+# because fetch_census.py skips files it already has.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-census-tn:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # No pip install step — fetch_census.py uses only the standard
+      # library, same convention as the other fetch_*.py scripts.
+      - name: Fetch Tamil Nadu Census 2011 data
+        run: python scripts/fetch_census.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/census
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update Tamil Nadu Census 2011 data"
+          git pull --rebase --autostash
+          git push
